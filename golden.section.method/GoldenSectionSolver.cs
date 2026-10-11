@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DichotomyApp
+namespace GoldenSectionMethod
 {
   public enum OptimizationMode
   {
@@ -16,6 +16,7 @@ namespace DichotomyApp
     public int Iterations;
     public bool Success;
     public string Error;
+    public string Warning;            // не блокирующее предупреждение
     public double FinalIntervalLeft;  // финальный [left; right] локализации
     public double FinalIntervalRight;
     public OptimizationMode Mode;
@@ -57,6 +58,13 @@ namespace DichotomyApp
       {
         result.Error = "Функция не вычислима на границах интервала";
         return result;
+      }
+
+      // ===== Предварительная проверка унимодальности =====
+      // Только для min/max (для корня понятие унимодальности |f| неприменимо).
+      if (mode == OptimizationMode.Minimum || mode == OptimizationMode.Maximum)
+      {
+        result.Warning = CheckUnimodality(function, a, b, mode);
       }
 
       // Начальные точки золотого сечения
@@ -147,14 +155,73 @@ namespace DichotomyApp
         double edgeTol = Math.Max(eps * 1.5, 1e-12);
         if ((point - a) < edgeTol || (b - point) < edgeTol)
         {
-          result.Error =
-              "Экстремум на границе интервала. Расширьте [a; b].";
+          result.Error = "Экстремум на границе интервала. Расширьте [a; b].";
           return result;
         }
       }
 
       result.Success = true;
       return result;
+    }
+
+    // ============================================================
+    // ПРОВЕРКА УНИМОДАЛЬНОСТИ
+    // ============================================================
+    // Численно считаем f'(x) в N точках [a; b] через центральную
+    // разность и считаем смены знака.
+    //   - 1 смена знака — унимодальна (норма).
+    //   - 0 смен — монотонна, экстремум на границе.
+    //   - >1 смен — неунимодальна, экстремум может быть локальным.
+    // Возвращает null, если всё нормально, иначе — текст предупреждения.
+    private static string CheckUnimodality(
+        Func<double, double> f, double a, double b, OptimizationMode mode)
+    {
+      const int samples = 200;
+      double h = Math.Max((b - a) * 1e-6, 1e-9);
+
+      int signChanges = 0;
+      int previousSign = 0;
+      int validPoints = 0;
+
+      for (int i = 0; i <= samples; i++)
+      {
+        double x = a + (b - a) * i / samples;
+        double xPlus = x + h;
+        double xMinus = x - h;
+        if (xPlus > b || xMinus < a) continue;
+
+        double fPlus, fMinus;
+        if (!TryEvaluate(f, xPlus, out fPlus)) continue;
+        if (!TryEvaluate(f, xMinus, out fMinus)) continue;
+
+        double derivative = (fPlus - fMinus) / (2.0 * h);
+        if (Math.Abs(derivative) < 1e-12) continue;
+
+        validPoints++;
+        int sign = Math.Sign(derivative);
+        if (previousSign != 0 && sign != previousSign)
+          signChanges++;
+
+        previousSign = sign;
+      }
+
+      // Если не набрали достаточно точек — не гадаем
+      if (validPoints < samples / 4) return null;
+
+      string kind = (mode == OptimizationMode.Minimum) ? "минимум" : "максимум";
+
+      if (signChanges > 1)
+      {
+        return $"Функция, возможно, неунимодальна: производная меняет знак {signChanges} раз(а). " +
+               $"Найденный {kind} может быть локальным, а не глобальным.";
+      }
+      if (signChanges == 0)
+      {
+        return $"Функция, похоже, монотонна на отрезке. Внутреннего {kind}а может не быть — " +
+               $"{kind} окажется на границе [a; b].";
+      }
+
+      return null; // всё ок
     }
 
     private static bool TryEvaluate(Func<double, double> f, double x, out double v)

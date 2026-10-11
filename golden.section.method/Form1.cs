@@ -1,9 +1,8 @@
-﻿using DichotomyApp;
-using ScottPlot.WinForms;
-using System;
+﻿using System;
 using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using ScottPlot.WinForms;
 
 namespace GoldenSectionMethod
 {
@@ -27,6 +26,7 @@ namespace GoldenSectionMethod
     private FormsPlot _formsPlot;
 
     private Label _labelResult;
+    private Label _labelWarning;
 
     private Label _labelRootName;
     private Label _valueRoot;
@@ -151,7 +151,7 @@ namespace GoldenSectionMethod
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 10)); // 5 отступ
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 68)); // 6 заголовок
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 116));// 7 таблица
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 8 filler
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 8 предупреждение/filler
 
       // a
       _leftPanel.Controls.Add(MakeLabel("a ="), 0, 0);
@@ -251,6 +251,22 @@ namespace GoldenSectionMethod
       _resultTable = CreateResultTable();
       _leftPanel.Controls.Add(_resultTable, 0, 7);
       _leftPanel.SetColumnSpan(_resultTable, 3);
+
+      // ПРЕДУПРЕЖДЕНИЕ (под таблицей результата, растягивается на row 8)
+      _labelWarning = new Label
+      {
+        Text = "",
+        Dock = DockStyle.Fill,
+        AutoSize = false,
+        Font = new Font("Segoe UI", 8.5F, FontStyle.Italic),
+        ForeColor = Color.DarkOrange,
+        TextAlign = ContentAlignment.TopLeft,
+        Padding = new Padding(0, 10, 10, 0),
+        Margin = new Padding(0)
+      };
+
+      _leftPanel.Controls.Add(_labelWarning, 0, 8);
+      _leftPanel.SetColumnSpan(_labelWarning, 3);
 
       rootLayout.Controls.Add(_leftPanel, 0, 0);
 
@@ -451,7 +467,12 @@ namespace GoldenSectionMethod
           "\r\n" +
           "Десятичный разделитель в формуле: точка.\r\n" +
           "Для a, b и e можно использовать точку или запятую.\r\n" +
-          "Тригонометрия — в радианах.";
+          "Тригонометрия — в радианах.\r\n" +
+          "\r\n" +
+          "ВАЖНО: метод золотого сечения корректен только для\r\n" +
+          "УНИМОДАЛЬНЫХ функций на [a; b] — когда на отрезке ровно\r\n" +
+          "один минимум (или максимум). Иначе результат может быть\r\n" +
+          "локальным, а не глобальным экстремумом.";
     }
 
     // ============================================================
@@ -473,6 +494,8 @@ namespace GoldenSectionMethod
       _labelResult.ForeColor = Color.DarkRed;
       _labelResult.Text = "Ошибка: " + message;
 
+      _labelWarning.Text = "";
+
       ClearResultTable();
       HideResultTable();
     }
@@ -492,6 +515,8 @@ namespace GoldenSectionMethod
 
       _labelResult.ForeColor = Color.DarkGreen;
       _labelResult.Text = "Результат";
+
+      _labelWarning.Text = "";
 
       ClearResultTable();
       UpdateResultLabels(CurrentMode);
@@ -592,6 +617,8 @@ namespace GoldenSectionMethod
         _labelResult.ForeColor = Color.DarkGreen;
         _labelResult.Text = "Результат";
 
+        _labelWarning.Text = "";
+
         ClearResultTable();
         UpdateResultLabels(CurrentMode);
         ShowResultTable();
@@ -665,6 +692,8 @@ namespace GoldenSectionMethod
         _labelResult.ForeColor = Color.DarkRed;
         _labelResult.Text = "Ошибка: " + _solverResult.Error;
 
+        _labelWarning.Text = "";
+
         ClearResultTable();
         HideResultTable();
         return;
@@ -678,6 +707,11 @@ namespace GoldenSectionMethod
           _solverResult.Value.ToString("F8", CultureInfo.InvariantCulture),
           _solverResult.Iterations.ToString(CultureInfo.InvariantCulture),
           _precision.ToString("G", CultureInfo.InvariantCulture));
+
+      // Не блокирующее предупреждение о возможной неунимодальности
+      _labelWarning.Text = string.IsNullOrEmpty(_solverResult.Warning)
+          ? ""
+          : "⚠ " + _solverResult.Warning;
 
       ShowResultTable();
       _resultTable.PerformLayout();
