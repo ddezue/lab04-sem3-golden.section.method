@@ -7,8 +7,14 @@ using System.Windows.Forms;
 
 namespace GoldenSectionMethod
 {
-  public class Form1 : Form
+  public partial class Form1 : Form
   {
+    // Заглушка — чтобы не конфликтовать с Form1.Designer.cs,
+    // если он остался от шаблона. UI строится в BuildUserInterface().
+    private void InitializeComponent()
+    {
+    }
+
     private TextBox _textBoxA;
     private TextBox _textBoxB;
     private TextBox _textBoxE;
@@ -26,7 +32,9 @@ namespace GoldenSectionMethod
     private Label _valueRoot;
     private Label _labelFunctionName;
     private Label _valueFunction;
+    private Label _labelIterationsName;
     private Label _valueIterations;
+    private Label _labelPrecisionName;
     private Label _valuePrecision;
 
     private TableLayoutPanel _resultTable;
@@ -279,7 +287,7 @@ namespace GoldenSectionMethod
         Padding = new Padding(0)
       };
 
-      table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 145));
+      table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
       table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
       for (int i = 0; i < 4; i++)
@@ -295,11 +303,13 @@ namespace GoldenSectionMethod
       _valueFunction = CreateResultValueLabel();
       table.Controls.Add(_valueFunction, 1, 1);
 
-      table.Controls.Add(CreateResultNameLabel("Итераций"), 0, 2);
+      _labelIterationsName = CreateResultNameLabel("Итераций");
+      table.Controls.Add(_labelIterationsName, 0, 2);
       _valueIterations = CreateResultValueLabel();
       table.Controls.Add(_valueIterations, 1, 2);
 
-      table.Controls.Add(CreateResultNameLabel("Точность e"), 0, 3);
+      _labelPrecisionName = CreateResultNameLabel("Точность e");
+      table.Controls.Add(_labelPrecisionName, 0, 3);
       _valuePrecision = CreateResultValueLabel();
       table.Controls.Add(_valuePrecision, 1, 3);
 
@@ -312,9 +322,12 @@ namespace GoldenSectionMethod
       {
         Text = text,
         Dock = DockStyle.Fill,
+        AutoSize = false,
         Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         TextAlign = ContentAlignment.MiddleLeft,
-        Margin = new Padding(0)
+        Padding = new Padding(2, 0, 0, 0),
+        Margin = new Padding(0),
+        AutoEllipsis = true
       };
     }
 
@@ -324,9 +337,12 @@ namespace GoldenSectionMethod
       {
         Text = "-",
         Dock = DockStyle.Fill,
+        AutoSize = false,
         Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         TextAlign = ContentAlignment.MiddleLeft,
-        Margin = new Padding(0)
+        Padding = new Padding(2, 0, 0, 0),
+        Margin = new Padding(0),
+        AutoEllipsis = true
       };
     }
 
@@ -351,6 +367,9 @@ namespace GoldenSectionMethod
           _labelFunctionName.Text = "f(x)";
           break;
       }
+
+      _labelIterationsName.Text = "Итераций";
+      _labelPrecisionName.Text = "Точность e";
     }
 
     private void SetResultValues(string root, string functionValue,
@@ -475,6 +494,7 @@ namespace GoldenSectionMethod
       _labelResult.Text = "Результат";
 
       ClearResultTable();
+      UpdateResultLabels(CurrentMode);
       ShowResultTable();
 
       _solverResult = null;
@@ -573,6 +593,7 @@ namespace GoldenSectionMethod
         _labelResult.Text = "Результат";
 
         ClearResultTable();
+        UpdateResultLabels(CurrentMode);
         ShowResultTable();
 
         _formsPlot.Plot.Clear();
@@ -659,6 +680,8 @@ namespace GoldenSectionMethod
           _precision.ToString("G", CultureInfo.InvariantCulture));
 
       ShowResultTable();
+      _resultTable.PerformLayout();
+      _resultTable.Refresh();
     }
 
     // ============================================================
