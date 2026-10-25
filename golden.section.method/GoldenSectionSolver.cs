@@ -15,17 +15,17 @@ namespace GoldenSectionMethod
     public double Value;              // f(x*) — значение ИСХОДНОЙ функции
     public bool Success;
     public string Error;
-    public string Warning;            // не блокирующее предупреждение
-    public double FinalIntervalLeft;  // финальный [left; right] локализации
+    public string Warning;
+    public double FinalIntervalLeft;
     public double FinalIntervalRight;
     public OptimizationMode Mode;
   }
 
   public static class GoldenSectionSolver
   {
-    // 1/φ = (√5 − 1) / 2 ≈ 0.6180339887498949
     private const double InvPhi = 0.6180339887498949;
-    private const int MaxIterations = 10000; // для защиты от бесконечного цикла
+    private const int MaxIterations = 10000;
+    private const double DiscontinuityThreshold = 1e5; // Порог для отлова разрывов
 
     public static GoldenSectionResult Solve(
         Func<double, double> function,
@@ -41,7 +41,6 @@ namespace GoldenSectionMethod
       if (eps <= 0) { result.Error = "Точность e должна быть > 0"; return result; }
       if (eps >= (b - a)) { result.Error = "Точность e больше длины интервала"; return result; }
 
-      // Выбор целевой функции по режиму
       Func<double, double> target;
       switch (mode)
       {
@@ -51,7 +50,6 @@ namespace GoldenSectionMethod
         default: result.Error = "Неизвестный режим поиска"; return result;
       }
 
-      // Проверка вычислимости на границах
       double tmp;
       if (!TryEvaluate(target, a, out tmp) || !TryEvaluate(target, b, out tmp))
       {
@@ -59,16 +57,19 @@ namespace GoldenSectionMethod
         return result;
       }
 
-      // ===== Предварительная проверка унимодальности =====
       if (mode == OptimizationMode.Minimum || mode == OptimizationMode.Maximum)
       {
         result.Warning = CheckUnimodality(function, a, b, mode);
+        if (result.Warning != null && result.Warning.Contains("разрыв"))
+        {
+          result.Error = result.Warning;
+          return result;
+        }
       }
 
-      // Начальные точки золотого сечения
       double left = a, right = b;
-      double x1 = right - InvPhi * (right - left);   // ближе к a
-      double x2 = left + InvPhi * (right - left);    // ближе к b
+      double x1 = right - InvPhi * (right - left);
+      double x2 = left + InvPhi * (right - left);
 
       double f1, f2;
       if (!TryEvaluate(target, x1, out f1) || !TryEvaluate(target, x2, out f2))
@@ -111,13 +112,11 @@ namespace GoldenSectionMethod
 
       if (iter >= MaxIterations)
       {
-        result.Error = "Превышено максимальное число итераций (функция слишком сложная или есть разрыв)";
+        result.Error = "Превышено максимальное число итераций";
         return result;
       }
 
       double point = (left + right) * 0.5;
-
-      // Если точка прижалась к границе, зафиксируем её ровно на границе
       double edgeTol = Math.Max(eps * 2.0, 1e-7);
       if (point - a < edgeTol) point = a;
       else if (b - point < edgeTol) point = b;
@@ -129,12 +128,18 @@ namespace GoldenSectionMethod
         return result;
       }
 
+      // Отлавливаем полюса для min/max (например, tan(x))
+      if (mode != OptimizationMode.Root && Math.Abs(fPoint) > DiscontinuityThreshold)
+      {
+        result.Error = "Обнаружен разрыв (полюс). Метод золотого сечения неприменим для поиска экстремума на этом интервале.";
+        return result;
+      }
+
       result.Point = point;
       result.Value = fPoint;
       result.FinalIntervalLeft = left;
       result.FinalIntervalRight = right;
 
-      // ===== Проверки по режиму =====
       if (mode == OptimizationMode.Root)
       {
         double tolerance = Math.Max(1e-6, eps);
@@ -147,7 +152,6 @@ namespace GoldenSectionMethod
         }
       }
 
-      // Если точка на границе, дополняем предупреждение
       if ((point == a || point == b) && string.IsNullOrEmpty(result.Warning))
       {
         string kind = (mode == OptimizationMode.Minimum) ? "минимум" : "максимум";
@@ -158,9 +162,6 @@ namespace GoldenSectionMethod
       return result;
     }
 
-    // ============================================================
-    // ПРОВЕРКА УНИМОДАЛЬНОСТИ
-    // ============================================================
     private static string CheckUnimodality(
         Func<double, double> f, double a, double b, OptimizationMode mode)
     {
@@ -181,6 +182,12 @@ namespace GoldenSectionMethod
         double fPlus, fMinus;
         if (!TryEvaluate(f, xPlus, out fPlus)) continue;
         if (!TryEvaluate(f, xMinus, out fMinus)) continue;
+
+        // Проверка на резкий скачок (разрыв типа тангенса)
+        if (Math.Abs(fPlus - fMinus) > DiscontinuityThreshold)
+        {
+          return "На интервале обнаружен разрыв (полюс). Метод неприменим для поиска экстремума.";
+        }
 
         double derivative = (fPlus - fMinus) / (2.0 * h);
         if (Math.Abs(derivative) < 1e-12) continue;

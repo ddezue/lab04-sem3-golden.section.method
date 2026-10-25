@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Globalization;
+using System.Linq;
 using System.Windows.Forms;
 using ScottPlot.WinForms;
 
@@ -81,10 +82,6 @@ namespace GoldenSectionMethod
       }
     }
 
-    // ============================================================
-    // ИНТЕРФЕЙС
-    // ============================================================
-
     private void BuildUserInterface()
     {
       Text = "Метод золотого сечения";
@@ -94,7 +91,6 @@ namespace GoldenSectionMethod
       StartPosition = FormStartPosition.CenterScreen;
       Font = new Font("Segoe UI", 9F, FontStyle.Regular);
 
-      // MENU STRIP
       _menuStrip = new MenuStrip();
 
       var calculateItem = new ToolStripMenuItem("Рассчитать");
@@ -112,7 +108,6 @@ namespace GoldenSectionMethod
       MainMenuStrip = _menuStrip;
       Controls.Add(_menuStrip);
 
-      // ОСНОВНОЙ LAYOUT
       var rootLayout = new TableLayoutPanel
       {
         Dock = DockStyle.Fill,
@@ -126,7 +121,6 @@ namespace GoldenSectionMethod
 
       Controls.Add(rootLayout);
 
-      // ЛЕВАЯ ПАНЕЛЬ
       _leftPanel = new TableLayoutPanel
       {
         Dock = DockStyle.Fill,
@@ -139,42 +133,37 @@ namespace GoldenSectionMethod
       _leftPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
       _leftPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42));
 
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // 0 a
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // 1 b
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // 2 e
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40)); // 3 f(x)
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // 4 режим
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 10)); // 5 отступ
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 68)); // 6 заголовок
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90)); // 7 таблица (уменьшено)
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 8 предупреждение/filler
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 10));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-      // a
       _leftPanel.Controls.Add(MakeLabel("a ="), 0, 0);
       _textBoxA = MakeTextBox();
       _leftPanel.Controls.Add(_textBoxA, 1, 0);
       _leftPanel.SetColumnSpan(_textBoxA, 2);
 
-      // b
       _leftPanel.Controls.Add(MakeLabel("b ="), 0, 1);
       _textBoxB = MakeTextBox();
       _leftPanel.Controls.Add(_textBoxB, 1, 1);
       _leftPanel.SetColumnSpan(_textBoxB, 2);
 
-      // e
       _leftPanel.Controls.Add(MakeLabel("e ="), 0, 2);
       _textBoxE = MakeTextBox();
       _textBoxE.Text = "0,0001";
       _leftPanel.Controls.Add(_textBoxE, 1, 2);
       _leftPanel.SetColumnSpan(_textBoxE, 2);
 
-      // f(x)
       _leftPanel.Controls.Add(MakeLabel("f(x) ="), 0, 3);
       _textBoxFormula = MakeTextBox();
       _textBoxFormula.Text = "x^2 + 2*x - 6";
       _leftPanel.Controls.Add(_textBoxFormula, 1, 3);
 
-      // ?
       _helpIcon = new Label
       {
         Text = "?",
@@ -189,7 +178,6 @@ namespace GoldenSectionMethod
 
       _leftPanel.Controls.Add(_helpIcon, 2, 3);
 
-      // РЕЖИМ
       _leftPanel.Controls.Add(MakeLabel("Режим:"), 0, 4);
 
       var modePanel = new FlowLayoutPanel
@@ -201,25 +189,9 @@ namespace GoldenSectionMethod
         Padding = new Padding(0)
       };
 
-      _radioMin = new RadioButton
-      {
-        Text = "Минимум",
-        Checked = true,
-        AutoSize = true,
-        Margin = new Padding(0, 6, 10, 0)
-      };
-      _radioMax = new RadioButton
-      {
-        Text = "Максимум",
-        AutoSize = true,
-        Margin = new Padding(0, 6, 10, 0)
-      };
-      _radioRoot = new RadioButton
-      {
-        Text = "Корень",
-        AutoSize = true,
-        Margin = new Padding(0, 6, 0, 0)
-      };
+      _radioMin = new RadioButton { Text = "Минимум", Checked = true, AutoSize = true, Margin = new Padding(0, 6, 10, 0) };
+      _radioMax = new RadioButton { Text = "Максимум", AutoSize = true, Margin = new Padding(0, 6, 10, 0) };
+      _radioRoot = new RadioButton { Text = "Корень", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
 
       modePanel.Controls.Add(_radioMin);
       modePanel.Controls.Add(_radioMax);
@@ -228,7 +200,6 @@ namespace GoldenSectionMethod
       _leftPanel.Controls.Add(modePanel, 1, 4);
       _leftPanel.SetColumnSpan(modePanel, 2);
 
-      // РЕЗУЛЬТАТ
       _labelResult = new Label
       {
         Text = "Результат",
@@ -248,7 +219,6 @@ namespace GoldenSectionMethod
       _leftPanel.Controls.Add(_resultTable, 0, 7);
       _leftPanel.SetColumnSpan(_resultTable, 3);
 
-      // ПРЕДУПРЕЖДЕНИЕ
       _labelWarning = new Label
       {
         Text = "",
@@ -266,11 +236,9 @@ namespace GoldenSectionMethod
 
       rootLayout.Controls.Add(_leftPanel, 0, 0);
 
-      // ГРАФИК
       _formsPlot = new FormsPlot { Dock = DockStyle.Fill };
       rootLayout.Controls.Add(_formsPlot, 1, 0);
 
-      // TOOLTIP
       _formulaToolTip = new ToolTip
       {
         AutoPopDelay = 60000,
@@ -284,17 +252,13 @@ namespace GoldenSectionMethod
       _formulaToolTip.SetToolTip(_helpIcon, BuildFormulaTooltipText());
     }
 
-    // ============================================================
-    // ТАБЛИЦА РЕЗУЛЬТАТА
-    // ============================================================
-
     private TableLayoutPanel CreateResultTable()
     {
       var table = new TableLayoutPanel
       {
         Dock = DockStyle.Fill,
         ColumnCount = 2,
-        RowCount = 3, // 3 строки (без итераций)
+        RowCount = 3,
         Margin = new Padding(0),
         Padding = new Padding(0)
       };
@@ -353,10 +317,6 @@ namespace GoldenSectionMethod
       };
     }
 
-    // ============================================================
-    // РЕЗУЛЬТАТ
-    // ============================================================
-
     private void UpdateResultLabels(OptimizationMode mode)
     {
       switch (mode)
@@ -374,7 +334,6 @@ namespace GoldenSectionMethod
           _labelFunctionName.Text = "f(x)";
           break;
       }
-
       _labelPrecisionName.Text = "Точность e";
     }
 
@@ -385,10 +344,7 @@ namespace GoldenSectionMethod
       _valuePrecision.Text = precision;
     }
 
-    private void ClearResultTable()
-    {
-      SetResultValues("-", "-", "-");
-    }
+    private void ClearResultTable() => SetResultValues("-", "-", "-");
 
     private void ShowResultTable()
     {
@@ -401,10 +357,6 @@ namespace GoldenSectionMethod
       _resultTable.Visible = false;
       _leftPanel.RowStyles[7].Height = 0;
     }
-
-    // ============================================================
-    // LABEL / TEXTBOX
-    // ============================================================
 
     private Label MakeLabel(string caption)
     {
@@ -429,10 +381,6 @@ namespace GoldenSectionMethod
       };
     }
 
-    // ============================================================
-    // TOOLTIP
-    // ============================================================
-
     private static string BuildFormulaTooltipText()
     {
       return
@@ -453,19 +401,9 @@ namespace GoldenSectionMethod
           "  sqrt(x) - 1\r\n" +
           "  ln(x) - 1\r\n" +
           "\r\n" +
-          "Десятичный разделитель в формуле: точка.\r\n" +
-          "Для a, b и e можно использовать точку или запятую.\r\n" +
-          "Тригонометрия — в радианах.\r\n" +
-          "\r\n" +
           "ВАЖНО: метод золотого сечения корректен только для\r\n" +
-          "УНИМОДАЛЬНЫХ функций на [a; b] — когда на отрезке ровно\r\n" +
-          "один локальный минимум (или максимум). Иначе результат\r\n" +
-          "может быть локальным, а не глобальным.";
+          "УНИМОДАЛЬНЫХ функций на [a; b] и функций БЕЗ РАЗРЫВОВ.";
     }
-
-    // ============================================================
-    // АВТОРАСЧЁТ
-    // ============================================================
 
     private void ScheduleAutoCalculate()
     {
@@ -473,24 +411,14 @@ namespace GoldenSectionMethod
       _autoCalcTimer.Start();
     }
 
-    // ============================================================
-    // ОШИБКА
-    // ============================================================
-
     private void ShowError(string message)
     {
       _labelResult.ForeColor = Color.DarkRed;
       _labelResult.Text = "Ошибка: " + message;
-
       _labelWarning.Text = "";
-
       ClearResultTable();
       HideResultTable();
     }
-
-    // ============================================================
-    // ОЧИСТКА
-    // ============================================================
 
     private void ClearAll()
     {
@@ -503,7 +431,6 @@ namespace GoldenSectionMethod
 
       _labelResult.ForeColor = Color.DarkGreen;
       _labelResult.Text = "Результат";
-
       _labelWarning.Text = "";
 
       ClearResultTable();
@@ -518,10 +445,6 @@ namespace GoldenSectionMethod
       _formsPlot.Refresh();
     }
 
-    // ============================================================
-    // ЦВЕТА ПОЛЕЙ
-    // ============================================================
-
     private void ResetFieldColors()
     {
       _textBoxA.BackColor = SystemColors.Window;
@@ -534,10 +457,6 @@ namespace GoldenSectionMethod
     {
       textBox.BackColor = isInvalid ? Color.MistyRose : SystemColors.Window;
     }
-
-    // ============================================================
-    // РАСЧЁТ
-    // ============================================================
 
     private void Calculate()
     {
@@ -586,10 +505,6 @@ namespace GoldenSectionMethod
       UpdatePlot();
     }
 
-    // ============================================================
-    // АВТОМАТИЧЕСКИЙ РАСЧЁТ
-    // ============================================================
-
     private void TryAutoCalculate()
     {
       ResetFieldColors();
@@ -604,7 +519,6 @@ namespace GoldenSectionMethod
 
         _labelResult.ForeColor = Color.DarkGreen;
         _labelResult.Text = "Результат";
-
         _labelWarning.Text = "";
 
         ClearResultTable();
@@ -665,10 +579,6 @@ namespace GoldenSectionMethod
       }
     }
 
-    // ============================================================
-    // ПОКАЗ РЕЗУЛЬТАТА
-    // ============================================================
-
     private void ShowResult()
     {
       if (_solverResult == null) return;
@@ -679,9 +589,7 @@ namespace GoldenSectionMethod
       {
         _labelResult.ForeColor = Color.DarkRed;
         _labelResult.Text = "Ошибка: " + _solverResult.Error;
-
         _labelWarning.Text = "";
-
         ClearResultTable();
         HideResultTable();
         return;
@@ -704,10 +612,6 @@ namespace GoldenSectionMethod
       _resultTable.Refresh();
     }
 
-    // ============================================================
-    // ФОРМАТ ПОГРЕШНОСТИ
-    // ============================================================
-
     private static string FormatByPrecision(double value, double eps)
     {
       int decimals = 0;
@@ -724,10 +628,6 @@ namespace GoldenSectionMethod
       return value.ToString("F" + decimals, CultureInfo.InvariantCulture);
     }
 
-    // ============================================================
-    // ПАРСИНГ ЧИСЕЛ
-    // ============================================================
-
     private static bool TryParseDouble(string text, out double value)
     {
       text = (text ?? "").Trim().Replace(',', '.');
@@ -738,10 +638,6 @@ namespace GoldenSectionMethod
           CultureInfo.InvariantCulture,
           out value);
     }
-
-    // ============================================================
-    // ПОСТРОИТЬ ГРАФИК
-    // ============================================================
 
     private void BuildGraphOnly()
     {
@@ -785,10 +681,6 @@ namespace GoldenSectionMethod
       UpdatePlot();
     }
 
-    // ============================================================
-    // ГРАФИК
-    // ============================================================
-
     private void UpdatePlot()
     {
       _formsPlot.Plot.Clear();
@@ -827,7 +719,6 @@ namespace GoldenSectionMethod
         }
       }
 
-      // Разрыв линии в точках скачка (полюса) — медианный порог
       double[] deltas = new double[sampleCount];
       int deltaCount = 0;
 
@@ -883,7 +774,6 @@ namespace GoldenSectionMethod
       rightLine.Color = ScottPlot.Color.FromSDColor(Color.Orange).WithAlpha(0.6);
       rightLine.LinePattern = ScottPlot.LinePattern.Dashed;
 
-      // Финальный интервал локализации [left; right]
       if (_solverResult != null &&
           _solverResult.FinalIntervalRight > _solverResult.FinalIntervalLeft &&
           _solverResult.FinalIntervalRight - _solverResult.FinalIntervalLeft <
@@ -897,8 +787,7 @@ namespace GoldenSectionMethod
             .FromSDColor(Color.Green).WithAlpha(0.2);
       }
 
-      // Точка минимума/максимума / корня
-      if (_solverResult != null && _solverResult.Success)
+      if (_solverResult != null && _solverResult.Success && Math.Abs(_solverResult.Value) < 1e5)
       {
         var pointMarker = _formsPlot.Plot.Add.Marker(
             _solverResult.Point,
@@ -913,7 +802,22 @@ namespace GoldenSectionMethod
           CurrentMode == OptimizationMode.Maximum ? "max" : "root";
 
       _formsPlot.Plot.Title($"f(x) = {_textBoxFormula.Text}   ({modeLabel})");
-      _formsPlot.Plot.Axes.AutoScale();
+
+      // УМНОЕ МАСШТАБИРОВАНИЕ ОСИ Y
+      // Берем только валидные значения (без разрывов)
+      var validYs = ys.Where(y => !double.IsNaN(y) && !double.IsInfinity(y)).ToArray();
+      if (validYs.Length > 0)
+      {
+        Array.Sort(validYs);
+        // Берем 2-й и 98-й перцентиль, чтобы отсечь огромные пики (полюса)
+        double low = validYs[(int)(validYs.Length * 0.02)];
+        double high = validYs[(int)(validYs.Length * 0.98)];
+        if (Math.Abs(high - low) < 1e-9) { low -= 1; high += 1; }
+        double yMargin = (high - low) * 0.1;
+        _formsPlot.Plot.Axes.SetLimitsY(low - yMargin, high + yMargin);
+      }
+
+      _formsPlot.Plot.Axes.SetLimitsX(xMin, xMax);
       _formsPlot.Refresh();
     }
   }
