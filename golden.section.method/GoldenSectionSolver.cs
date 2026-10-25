@@ -13,7 +13,6 @@ namespace GoldenSectionMethod
   {
     public double Point;              // x* — точка экстремума или корень
     public double Value;              // f(x*) — значение ИСХОДНОЙ функции
-    public int Iterations;
     public bool Success;
     public string Error;
     public string Warning;            // не блокирующее предупреждение
@@ -26,7 +25,7 @@ namespace GoldenSectionMethod
   {
     // 1/φ = (√5 − 1) / 2 ≈ 0.6180339887498949
     private const double InvPhi = 0.6180339887498949;
-    private const int MaxIterations = 10000;
+    private const int MaxIterations = 10000; // для защиты от бесконечного цикла
 
     public static GoldenSectionResult Solve(
         Func<double, double> function,
@@ -61,7 +60,6 @@ namespace GoldenSectionMethod
       }
 
       // ===== Предварительная проверка унимодальности =====
-      // Только для min/max (для корня понятие унимодальности |f| неприменимо).
       if (mode == OptimizationMode.Minimum || mode == OptimizationMode.Maximum)
       {
         result.Warning = CheckUnimodality(function, a, b, mode);
@@ -87,7 +85,6 @@ namespace GoldenSectionMethod
 
         if (f1 < f2)
         {
-          // Минимум в [left; x2]. x1 становится новой x2.
           right = x2;
           x2 = x1; f2 = f1;
           x1 = right - InvPhi * (right - left);
@@ -100,7 +97,6 @@ namespace GoldenSectionMethod
         }
         else
         {
-          // Минимум в [x1; right]. x2 становится новой x1.
           left = x1;
           x1 = x2; f1 = f2;
           x2 = left + InvPhi * (right - left);
@@ -115,13 +111,17 @@ namespace GoldenSectionMethod
 
       if (iter >= MaxIterations)
       {
-        result.Error = "Превышено максимальное число итераций";
+        result.Error = "Превышено максимальное число итераций (функция слишком сложная или есть разрыв)";
         return result;
       }
 
       double point = (left + right) * 0.5;
 
-      // Значение исходной функции (не target) в найденной точке
+      // Если точка прижалась к границе, зафиксируем её ровно на границе
+      double edgeTol = Math.Max(eps * 2.0, 1e-7);
+      if (point - a < edgeTol) point = a;
+      else if (b - point < edgeTol) point = b;
+
       double fPoint;
       if (!TryEvaluate(function, point, out fPoint))
       {
@@ -131,14 +131,12 @@ namespace GoldenSectionMethod
 
       result.Point = point;
       result.Value = fPoint;
-      result.Iterations = iter;
       result.FinalIntervalLeft = left;
       result.FinalIntervalRight = right;
 
       // ===== Проверки по режиму =====
       if (mode == OptimizationMode.Root)
       {
-        // Минимум |f| должен быть близок к нулю
         double tolerance = Math.Max(1e-6, eps);
         if (Math.Abs(fPoint) > tolerance)
         {
@@ -148,16 +146,12 @@ namespace GoldenSectionMethod
           return result;
         }
       }
-      else
+
+      // Если точка на границе, дополняем предупреждение
+      if ((point == a || point == b) && string.IsNullOrEmpty(result.Warning))
       {
-        // Экстремум не должен лежать на границе —
-        // иначе функция, скорее всего, монотонна и экстремума внутри нет.
-        double edgeTol = Math.Max(eps * 1.5, 1e-12);
-        if ((point - a) < edgeTol || (b - point) < edgeTol)
-        {
-          result.Error = "Экстремум на границе интервала. Расширьте [a; b].";
-          return result;
-        }
+        string kind = (mode == OptimizationMode.Minimum) ? "минимум" : "максимум";
+        result.Warning = $"Найденный {kind} лежит на границе интервала.";
       }
 
       result.Success = true;
@@ -167,12 +161,6 @@ namespace GoldenSectionMethod
     // ============================================================
     // ПРОВЕРКА УНИМОДАЛЬНОСТИ
     // ============================================================
-    // Численно считаем f'(x) в N точках [a; b] через центральную
-    // разность и считаем смены знака.
-    //   - 1 смена знака — унимодальна (норма).
-    //   - 0 смен — монотонна, экстремум на границе.
-    //   - >1 смен — неунимодальна, экстремум может быть локальным.
-    // Возвращает null, если всё нормально, иначе — текст предупреждения.
     private static string CheckUnimodality(
         Func<double, double> f, double a, double b, OptimizationMode mode)
     {
@@ -205,7 +193,6 @@ namespace GoldenSectionMethod
         previousSign = sign;
       }
 
-      // Если не набрали достаточно точек — не гадаем
       if (validPoints < samples / 4) return null;
 
       string kind = (mode == OptimizationMode.Minimum) ? "минимум" : "максимум";
@@ -217,11 +204,10 @@ namespace GoldenSectionMethod
       }
       if (signChanges == 0)
       {
-        return $"Функция, похоже, монотонна на отрезке. Внутреннего {kind}а может не быть — " +
-               $"{kind} окажется на границе [a; b].";
+        return "Функция монотонна на отрезке. Внутри экстремума нет, он будет на границе.";
       }
 
-      return null; // всё ок
+      return null;
     }
 
     private static bool TryEvaluate(Func<double, double> f, double x, out double v)

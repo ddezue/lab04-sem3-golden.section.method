@@ -8,8 +8,6 @@ namespace GoldenSectionMethod
 {
   public partial class Form1 : Form
   {
-    // Заглушка — чтобы не конфликтовать с Form1.Designer.cs,
-    // если он остался от шаблона. UI строится в BuildUserInterface().
     private void InitializeComponent()
     {
     }
@@ -32,8 +30,6 @@ namespace GoldenSectionMethod
     private Label _valueRoot;
     private Label _labelFunctionName;
     private Label _valueFunction;
-    private Label _labelIterationsName;
-    private Label _valueIterations;
     private Label _labelPrecisionName;
     private Label _valuePrecision;
 
@@ -150,7 +146,7 @@ namespace GoldenSectionMethod
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // 4 режим
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 10)); // 5 отступ
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 68)); // 6 заголовок
-      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 116));// 7 таблица
+      _leftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 90)); // 7 таблица (уменьшено)
       _leftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 8 предупреждение/filler
 
       // a
@@ -252,7 +248,7 @@ namespace GoldenSectionMethod
       _leftPanel.Controls.Add(_resultTable, 0, 7);
       _leftPanel.SetColumnSpan(_resultTable, 3);
 
-      // ПРЕДУПРЕЖДЕНИЕ (под таблицей результата, растягивается на row 8)
+      // ПРЕДУПРЕЖДЕНИЕ
       _labelWarning = new Label
       {
         Text = "",
@@ -298,7 +294,7 @@ namespace GoldenSectionMethod
       {
         Dock = DockStyle.Fill,
         ColumnCount = 2,
-        RowCount = 4,
+        RowCount = 3, // 3 строки (без итераций)
         Margin = new Padding(0),
         Padding = new Padding(0)
       };
@@ -306,7 +302,7 @@ namespace GoldenSectionMethod
       table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
       table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < 3; i++)
         table.RowStyles.Add(new RowStyle(SizeType.Absolute, 29));
 
       _labelRootName = CreateResultNameLabel("Точка минимума");
@@ -319,15 +315,10 @@ namespace GoldenSectionMethod
       _valueFunction = CreateResultValueLabel();
       table.Controls.Add(_valueFunction, 1, 1);
 
-      _labelIterationsName = CreateResultNameLabel("Итераций");
-      table.Controls.Add(_labelIterationsName, 0, 2);
-      _valueIterations = CreateResultValueLabel();
-      table.Controls.Add(_valueIterations, 1, 2);
-
       _labelPrecisionName = CreateResultNameLabel("Точность e");
-      table.Controls.Add(_labelPrecisionName, 0, 3);
+      table.Controls.Add(_labelPrecisionName, 0, 2);
       _valuePrecision = CreateResultValueLabel();
-      table.Controls.Add(_valuePrecision, 1, 3);
+      table.Controls.Add(_valuePrecision, 1, 2);
 
       return table;
     }
@@ -384,28 +375,25 @@ namespace GoldenSectionMethod
           break;
       }
 
-      _labelIterationsName.Text = "Итераций";
       _labelPrecisionName.Text = "Точность e";
     }
 
-    private void SetResultValues(string root, string functionValue,
-                                 string iterations, string precision)
+    private void SetResultValues(string root, string functionValue, string precision)
     {
       _valueRoot.Text = root;
       _valueFunction.Text = functionValue;
-      _valueIterations.Text = iterations;
       _valuePrecision.Text = precision;
     }
 
     private void ClearResultTable()
     {
-      SetResultValues("-", "-", "-", "-");
+      SetResultValues("-", "-", "-");
     }
 
     private void ShowResultTable()
     {
       _resultTable.Visible = true;
-      _leftPanel.RowStyles[7].Height = 116;
+      _leftPanel.RowStyles[7].Height = 90;
     }
 
     private void HideResultTable()
@@ -471,8 +459,8 @@ namespace GoldenSectionMethod
           "\r\n" +
           "ВАЖНО: метод золотого сечения корректен только для\r\n" +
           "УНИМОДАЛЬНЫХ функций на [a; b] — когда на отрезке ровно\r\n" +
-          "один минимум (или максимум). Иначе результат может быть\r\n" +
-          "локальным, а не глобальным экстремумом.";
+          "один локальный минимум (или максимум). Иначе результат\r\n" +
+          "может быть локальным, а не глобальным.";
     }
 
     // ============================================================
@@ -705,10 +693,8 @@ namespace GoldenSectionMethod
       SetResultValues(
           FormatByPrecision(_solverResult.Point, _precision),
           _solverResult.Value.ToString("F8", CultureInfo.InvariantCulture),
-          _solverResult.Iterations.ToString(CultureInfo.InvariantCulture),
           _precision.ToString("G", CultureInfo.InvariantCulture));
 
-      // Не блокирующее предупреждение о возможной неунимодальности
       _labelWarning.Text = string.IsNullOrEmpty(_solverResult.Warning)
           ? ""
           : "⚠ " + _solverResult.Warning;
@@ -841,7 +827,7 @@ namespace GoldenSectionMethod
         }
       }
 
-      // Разрыв линии в точках скачка (полюса)
+      // Разрыв линии в точках скачка (полюса) — медианный порог
       double[] deltas = new double[sampleCount];
       int deltaCount = 0;
 
@@ -856,17 +842,22 @@ namespace GoldenSectionMethod
         Array.Sort(deltas, 0, deltaCount);
         double medianDelta = deltas[deltaCount / 2];
 
-        double maxAbsY = 0;
+        double[] absValues = new double[sampleCount + 1];
+        int absCount = 0;
         for (int i = 0; i <= sampleCount; i++)
         {
           if (!double.IsNaN(ys[i]) && !double.IsInfinity(ys[i]))
-          {
-            double a = Math.Abs(ys[i]);
-            if (a > maxAbsY) maxAbsY = a;
-          }
+            absValues[absCount++] = Math.Abs(ys[i]);
         }
 
-        double jumpThreshold = Math.Max(medianDelta * 20.0, maxAbsY * 0.5);
+        double medianAbsY = 1.0;
+        if (absCount > 0)
+        {
+          Array.Sort(absValues, 0, absCount);
+          medianAbsY = absValues[absCount / 2];
+        }
+
+        double jumpThreshold = Math.Max(medianDelta * 20.0, medianAbsY * 5.0);
         if (jumpThreshold < 1e-9) jumpThreshold = 1e-9;
 
         for (int i = 1; i <= sampleCount; i++)
@@ -906,7 +897,7 @@ namespace GoldenSectionMethod
             .FromSDColor(Color.Green).WithAlpha(0.2);
       }
 
-      // Точка экстремума / корня
+      // Точка минимума/максимума / корня
       if (_solverResult != null && _solverResult.Success)
       {
         var pointMarker = _formsPlot.Plot.Add.Marker(
